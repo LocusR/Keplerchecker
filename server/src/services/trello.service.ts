@@ -27,8 +27,12 @@ export class TrelloService {
 		return data
 	}
 
-	async getCards(): Promise<TrelloCard[]> {
+	async getCards(): Promise<Pick<TrelloCard, 'desc' | 'name' | 'id'>[]> {
 		const { data } = await this.api.get(`/boards/${config.boardId}/cards`)
-		return data
+		return data.map((card: TrelloCard) => ({
+			id: card.id,
+			name: card.name,
+			desk: card.desc,
+		}))
 	}
 }

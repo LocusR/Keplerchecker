@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model PhoneNumber {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  number    String   @unique
+  leads     Lead[]
+  createdAt DateTime @default(now())
+}
+
+model Lead {
+  id            String      @id @default(auto()) @map("_id") @db.ObjectId
+  text          String
+  phoneNumber   PhoneNumber @relation(fields: [phoneNumberId], references: [id])
+  phoneNumberId String      @db.ObjectId
+  createdAt     DateTime    @default(now())
+}
