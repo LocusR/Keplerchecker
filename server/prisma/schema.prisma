@@ -8,10 +8,9 @@ datasource db {
 }
 
 model PhoneNumber {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  number    String   @unique
-  leads     Lead[]
-  createdAt DateTime @default(now())
+  id     String @id @default(auto()) @map("_id") @db.ObjectId
+  number String @unique
+  leads  Lead[]
 }
 
 model Lead {

@@ -1,40 +1,48 @@
-import { TrelloCard } from '@/types/trello.types'
-import { PhoneUtils } from '@/utils/phoneUtil'
 import { PrismaClient } from '@prisma/client'
+import { ApiResponse } from '../types/response.types'
+import { PhoneUtils } from '../utils/phone.utils'
 
 export class PhoneService {
-	constructor(private prisma: PrismaClient) {}
+	private readonly prisma: PrismaClient
 
-	private async isPhoneNumberExists(phoneNumber: string): Promise<boolean> {
+	constructor(prisma: PrismaClient) {
+		this.prisma = prisma
+	}
+
+	public async isPhoneNumberExists(phoneNumber: string): Promise<boolean> {
+		if (!PhoneUtils.isValidPhoneNumber(phoneNumber)) {
+			throw new Error('Invalid phone number format')
+		}
+
 		const existingPhone = await this.prisma.phoneNumber.findUnique({
 			where: { number: phoneNumber },
+			select: { id: true },
 		})
 		return !!existingPhone
 	}
 
-	private async savePhoneNumber(phoneNumber: string): Promise<void> {
+	public async savePhoneNumber(phoneNumber: string): Promise<void> {
+		if (!PhoneUtils.isValidPhoneNumber(phoneNumber)) {
+			throw new Error('Invalid phone number format')
+		}
+
 		await this.prisma.phoneNumber.create({
-			data: {
-				number: phoneNumber,
-			},
+			data: { number: phoneNumber },
 		})
 	}
 
-	public async processJobPost(post: TrelloCard): Promise<{
-		message: string
-		phoneNumber?: string
-	}> {
+	public async addNumber(phoneNumber: string): Promise<ApiResponse> {
 		try {
-			const phoneNumber = PhoneUtils.extractPhoneNumber(post.desk)
-
 			if (!phoneNumber) {
 				return {
-					message: 'Phone number not found in the description',
+					success: false,
+					message: 'Phone number is required',
 				}
 			}
 
 			if (!PhoneUtils.isValidPhoneNumber(phoneNumber)) {
 				return {
+					success: false,
 					message: 'Invalid phone number format',
 				}
 			}
@@ -42,39 +50,22 @@ export class PhoneService {
 			const exists = await this.isPhoneNumberExists(phoneNumber)
 			if (exists) {
 				return {
-					message: 'Phone number already exists in database',
-					phoneNumber,
+					success: false,
+					message: 'Phone number already exists in the database',
 				}
 			}
 
 			await this.savePhoneNumber(phoneNumber)
-
 			return {
+				success: true,
 				message: 'Phone number successfully saved',
-				phoneNumber,
+				data: { phoneNumber },
 			}
 		} catch (error) {
-			console.error('Error processing job post:', error)
-			return {
-				message:
-					error instanceof Error ? error.message : 'Unknown error occurred',
-			}
+			console.error('PhoneService Error:', error)
+			throw new Error(
+				error instanceof Error ? error.message : 'Unknown error occurred'
+			)
 		}
-	}
-
-	public async getAllPhoneNumbers() {
-		return this.prisma.phoneNumber.findMany({
-			orderBy: {
-				createdAt: 'desc',
-			},
-		})
-	}
-
-	public async deletePhoneNumber(number: string) {
-		return this.prisma.phoneNumber.delete({
-			where: {
-				number,
-			},
-		})
 	}
 }

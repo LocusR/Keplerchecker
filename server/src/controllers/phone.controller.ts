@@ -1,100 +1,76 @@
-import { PhoneService } from '@/services/phone.service'
-import { TrelloCard } from '@/types/trello.types'
 import { PrismaClient } from '@prisma/client'
 import { Request, Response } from 'express'
+import { PhoneService } from '../services/phone.service'
+import { TrelloCard } from '../types/trello.types'
+import { PhoneUtils } from '../utils/phone.utils'
 
 export class PhoneController {
-	private phoneService: PhoneService
+	private readonly phoneService: PhoneService
 
 	constructor(prisma: PrismaClient) {
 		this.phoneService = new PhoneService(prisma)
 	}
 
-	public processCard = async (
-		req: Request,
-		res: Response
-	): Promise<Response> => {
+	public async updateNumberList(post: TrelloCard): Promise<{
+		success: boolean
+		message: string
+		phoneNumber?: string
+	}> {
 		try {
-			const card = req.body as TrelloCard
+			const phoneNumber = PhoneUtils.extractPhoneNumber(post.desc)
 
-			if (!card || !card.desk) {
-				return res.status(400).json({
-					message: 'Invalid card data. Description is required.',
-				})
+			if (!phoneNumber) {
+				return {
+					success: false,
+					message: 'Phone number not found in the description',
+				}
 			}
 
-			const result = await this.phoneService.processJobPost(card)
-
-			if (!result.phoneNumber) {
-				return res.status(400).json({
-					message: result.message,
-				})
+			if (!PhoneUtils.isValidPhoneNumber(phoneNumber)) {
+				return {
+					success: false,
+					message: 'Invalid phone number format',
+				}
 			}
 
-			return res.status(200).json({
-				success: true,
-				message: result.message,
-				data: {
-					phoneNumber: result.phoneNumber,
-				},
-			})
+			const response = await this.phoneService.addNumber(phoneNumber)
+			return {
+				success: response.success,
+				message: response.message,
+				phoneNumber: response.success ? phoneNumber : undefined,
+			}
 		} catch (error) {
-			console.error('Controller Error:', error)
-			return res.status(500).json({
+			console.error('Error processing job post:', error)
+			return {
 				success: false,
-				message: 'Internal server error',
-				error: error instanceof Error ? error.message : 'Unknown error',
-			})
+				message:
+					error instanceof Error ? error.message : 'Unknown error occurred',
+			}
 		}
 	}
 
-	public getAllPhoneNumbers = async (
-		_: Request,
+	public addPhoneNumber = async (
+		req: Request<{}, {}, { phoneNumber: string }>,
 		res: Response
-	): Promise<Response> => {
+	): Promise<void> => {
 		try {
-			const phoneNumbers = await this.phoneService.getAllPhoneNumbers()
+			const { phoneNumber } = req.body
 
-			return res.status(200).json({
-				success: true,
-				data: phoneNumbers,
-			})
-		} catch (error) {
-			console.error('Controller Error:', error)
-			return res.status(500).json({
-				success: false,
-				message: 'Internal server error',
-				error: error instanceof Error ? error.message : 'Unknown error',
-			})
-		}
-	}
-
-	public deletePhoneNumber = async (
-		req: Request,
-		res: Response
-	): Promise<Response> => {
-		try {
-			const { number } = req.params
-
-			if (!number) {
-				return res.status(400).json({
+			if (!phoneNumber) {
+				res.status(400).json({
 					success: false,
 					message: 'Phone number is required',
 				})
+				return
 			}
 
-			await this.phoneService.deletePhoneNumber(number)
-
-			return res.status(200).json({
-				success: true,
-				message: 'Phone number successfully deleted',
-			})
+			const result = await this.phoneService.addNumber(phoneNumber)
+			res.status(result.success ? 200 : 400).json(result)
 		} catch (error) {
 			console.error('Controller Error:', error)
-			return res.status(500).json({
+			res.status(500).json({
 				success: false,
 				message: 'Internal server error',
-				error: error instanceof Error ? error.message : 'Unknown error',
 			})
 		}
 	}

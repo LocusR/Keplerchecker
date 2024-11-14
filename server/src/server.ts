@@ -1,7 +1,8 @@
 import { PrismaClient } from '@prisma/client'
 import dotenv from 'dotenv'
 import express, { Express, NextFunction, Request, Response } from 'express'
-import { trelloRoutes } from './routes/trello.routes'
+import phoneRouter from './routes/phone.routes'
+import trelloRouter from './routes/trello.routes'
 
 dotenv.config()
 
@@ -9,7 +10,7 @@ const prisma = new PrismaClient()
 const app: Express = express()
 
 app.use(express.json())
-app.use('/trello', trelloRoutes)
+app.use('/trello', [phoneRouter, trelloRouter])
 
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
 	console.error(err.stack)

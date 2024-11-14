@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import { TrelloController } from '../controllers/trello.controller'
+import { DatabaseService } from '../services/database.service'
 
-export const trelloRoutes = Router()
-const trelloController = new TrelloController()
+const trelloRouter = Router()
+const prisma = DatabaseService.getInstance().getPrismaClient()
+const trelloController = new TrelloController(prisma)
 
-trelloRoutes.get('/board', trelloController.getBoard)
-trelloRoutes.get('/lists', trelloController.getLists)
-trelloRoutes.get('/cards', trelloController.getCards)
+trelloRouter.get('/cards', trelloController.getCards)
+
+export default trelloRouter
