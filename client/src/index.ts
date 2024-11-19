@@ -1,6 +1,19 @@
-import { Bot, GrammyError, HttpError } from 'grammy'
+import { Bot, Context, GrammyError, HttpError } from 'grammy'
 import { handleMessage, handleStart } from './bot/handlers.js'
 import { config } from './config/config'
+
+const ALLOWED_USER_IDS = [694852065, 1157199446]
+
+async function checkAccess(ctx: Context, next: () => Promise<void>) {
+	const userId = ctx.from?.id
+
+	if (!userId || !ALLOWED_USER_IDS.includes(userId)) {
+		await ctx.reply('You do not have access to this bot')
+		return
+	}
+
+	await next()
+}
 
 async function startBot() {
 	try {
@@ -10,8 +23,9 @@ async function startBot() {
 
 		const bot = new Bot(config.botToken)
 
-		bot.command('start', handleStart)
+		bot.use(checkAccess)
 
+		bot.command('start', handleStart)
 		bot.on('message:text', handleMessage)
 
 		bot.catch(err => {
