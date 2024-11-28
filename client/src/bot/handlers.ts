@@ -1,7 +1,6 @@
 import { Context } from 'grammy'
 import { trelloApi } from '../services/api.js'
 import { mainKeyboard } from './keyboards.js'
-//import { isValidPhoneNumber, formatPhoneNumber } from '../utils/phoneValidator.js';
 
 export async function handleStart(ctx: Context) {
 	await ctx.reply(
